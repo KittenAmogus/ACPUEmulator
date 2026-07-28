@@ -2,15 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <SDL2/SDL.h>
-
 #include <control.h>
+#include <gui.h>
 #include <interpreter.h>
 
-#define WIDTH 1280
-#define HEIGHT 720
-
 uint8_t program[] = {
+    // TODO: Assembler
     0xEC,       // rnd a
     0xED,       // rnd b
     0x64,       // add a, b
@@ -27,64 +24,37 @@ control_unit_t *init_control_unit(void) {
     return NULL;
 
   memset(cu, 0, sizeof(control_unit_t));
-  memcpy(cu->ram.ram.bank_raw[0], program, sizeof(program));
+  memcpy(cu->ram.ram.bank_raw[0], program, sizeof(program)); // TODO: Assembler
   return cu;
 }
 
 int main(void) {
-  if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-    fprintf(stderr, "SDL: Init failed: %s\r\n", SDL_GetError());
-    return -1;
-  }
-
-  SDL_Window *window =
-      SDL_CreateWindow("SDL Window", SDL_WINDOWPOS_CENTERED,
-                       SDL_WINDOWPOS_CENTERED, WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
-  if (window == NULL) {
-    fprintf(stderr, "SDL: Window creating failed: %s\r\n", SDL_GetError());
-    SDL_Quit();
-    return -1;
-  }
-
-  SDL_Renderer *renderer = SDL_CreateRenderer(
-      window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-
   /* === Init simulation === */
-
   control_unit_t *cu = init_control_unit();
   if (cu == NULL) {
     fprintf(stderr, "MAIN: Failed to create control unit\r\n");
     return -1;
   }
 
-  int running = 1;
-  SDL_Event event;
-
   printf("+-------+-------+------+------+------+------+--------+\r\n");
   printf("| IP    | IR    | A    | B    | C    | D    | F OCSZ |\r\n");
   printf("+-------+-------+------+------+------+------+--------+\r\n");
+
+  /* === Init GUI === */
+  if (!gui_init())
+    return -1;
+
+  int running = 1;
   while (running) {
     // TODO: Multithreading
     if (!update_control_unit(cu)) {
       break;
     }
 
-    // Poll events
-    while (SDL_PollEvent(&event)) {
-      if (event.type == SDL_QUIT)
-        running = 0;
-      if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
-        running = 0;
+    // Update GUI
+    if (!gui_update()) {
+      running = 0;
     }
-
-    // Clear
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-
-    // Redraw
-
-    // Flush display
-    SDL_RenderPresent(renderer);
   }
 
   printf("+-------+-------+------+------+------+------+--------+\r\n");
@@ -92,9 +62,8 @@ int main(void) {
   printf("| IP    | IR    | A    | B    | C    | D    | F OCSZ |\r\n");
   printf("+-------+-------+------+------+------+------+--------+\r\n");
 
+  // Clean up
   free(cu);
-  SDL_DestroyRenderer(renderer);
-  SDL_DestroyWindow(window);
-  SDL_Quit();
+  gui_exit();
   return 0;
 }
