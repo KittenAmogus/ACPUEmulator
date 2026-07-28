@@ -1,4 +1,5 @@
 #include "SDL_events.h"
+#include "SDL_video.h"
 #include <control.h>
 #include <display.h>
 #include <gui.h>
@@ -19,19 +20,22 @@ int display_create(control_unit_t *cu) {
   per_display.gui = gui;
   per_display.init = 1;
 
+  // Clear
+  SDL_SetRenderDrawColor(gui.renderer, 255, 255, 255, 255);
+  SDL_RenderClear(gui.renderer);
+
   printf("DISPLAY: Created display %dx%d\r\n", DISPLAY_SIZE, DISPLAY_SIZE);
   return 1;
+}
+
+static void full_redraw(void) {
+  SDL_SetRenderDrawColor(gui.renderer, 255, 255, 255, 255);
+  SDL_RenderClear(gui.renderer);
 }
 
 int display_update(control_unit_t *cu) {
   if (!gui.init)
     return 0;
-
-  // Clear
-  SDL_SetRenderDrawColor(gui.renderer, 255, 255, 255, 255);
-  SDL_RenderClear(gui.renderer);
-
-  // Redraw
 
   // Flush
   SDL_RenderPresent(gui.renderer);
@@ -51,6 +55,14 @@ int display_destroy(control_unit_t *cu) {
 int display_onevent(control_unit_t *cu, SDL_Event evt) {
   if (evt.type == SDL_QUIT)
     return display_destroy(cu);
+
+  else if (evt.type == SDL_WINDOWEVENT) {
+    switch (evt.window.event) {
+    case SDL_WINDOWEVENT_FOCUS_GAINED:
+      full_redraw();
+      break;
+    }
+  }
 
   return 1;
 }

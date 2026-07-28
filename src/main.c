@@ -1,4 +1,3 @@
-#include "SDL_events.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,7 +29,11 @@ typedef enum {
   PER_COUNT = 4,
 } peripheral_e;
 
+uint32_t active_window_id = 0;
 peripheral_t *peripherals[] = {NULL, NULL, NULL, NULL};
+
+uint8_t on_port_read(uint8_t port) { return 0x00; }
+void on_port_write(uint8_t port, uint8_t value) {}
 
 static control_unit_t *init_control_unit(void) {
   control_unit_t *cu = malloc(sizeof(control_unit_t));
@@ -71,7 +74,19 @@ int main(void) {
         if (per == NULL || !per->init)
           continue;
 
-        // if (SDL_GetWindowID(per->gui.window) == evt.window.windowID)
+        if (evt.type == SDL_WINDOWEVENT) {
+          switch (evt.window.event) {
+          case SDL_WINDOWEVENT_FOCUS_GAINED:
+            active_window_id = evt.window.windowID;
+            break;
+          }
+        }
+
+        if (evt.type == SDL_KEYDOWN &&
+            evt.window.windowID == active_window_id) {
+          printf("KEYDOWN: %02x\r\n", evt.key.keysym.scancode);
+        }
+
         per->onevent(cu, evt);
       }
     }
