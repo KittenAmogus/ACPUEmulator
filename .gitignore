@@ -1,0 +1,6 @@
+build/
+Emulator
+compile_commands.json
+log*
+.cache
+
