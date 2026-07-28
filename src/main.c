@@ -1,10 +1,14 @@
+#include "SDL_events.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <control.h>
-#include <gui.h>
 #include <interpreter.h>
+#include <peripheral.h>
+
+#include <display.h>
 
 uint8_t program[] = {
     // TODO: Assembler
@@ -18,7 +22,17 @@ uint8_t program[] = {
     0x01,       // hlt
 };
 
-control_unit_t *init_control_unit(void) {
+typedef enum {
+  PER_DISPLAY = 0,
+  PER_KBD = 1,
+  PER_TERM = 2,
+  PER_DIGINT = 3,
+  PER_COUNT = 4,
+} peripheral_e;
+
+peripheral_t *peripherals[] = {NULL, NULL, NULL, NULL};
+
+static control_unit_t *init_control_unit(void) {
   control_unit_t *cu = malloc(sizeof(control_unit_t));
   if (cu == NULL)
     return NULL;
@@ -36,34 +50,67 @@ int main(void) {
     return -1;
   }
 
-  printf("+-------+-------+------+------+------+------+--------+\r\n");
-  printf("| IP    | IR    | A    | B    | C    | D    | F OCSZ |\r\n");
-  printf("+-------+-------+------+------+------+------+--------+\r\n");
+  // Fill peripherals
+  peripherals[PER_DISPLAY] = &per_display;
 
-  /* === Init GUI === */
-  if (!gui_init())
-    return -1;
+  /* === Init peripherals === */
+  peripheral_t *display = peripherals[PER_DISPLAY];
+  display->create(cu);
 
   int running = 1;
-  while (running) {
-    // TODO: Multithreading
-    if (!update_control_unit(cu)) {
-      break;
+  int must_run = 1;
+  int need_update = 1;
+
+  SDL_Event evt;
+  peripheral_t *per;
+
+  while (running && must_run) {
+    while (SDL_PollEvent(&evt)) {
+      for (int i = 0; i < PER_COUNT; ++i) {
+        per = peripherals[i];
+        if (per == NULL || !per->init)
+          continue;
+
+        // if (SDL_GetWindowID(per->gui.window) == evt.window.windowID)
+        per->onevent(cu, evt);
+      }
     }
 
-    // Update GUI
-    if (!gui_update()) {
-      running = 0;
+    must_run = 0;
+    if (need_update) {
+      must_run = 1;
+      if (!update_control_unit(cu)) {
+        need_update = 0;
+
+        printf("+-------+-------+------+------+------+------+--------+\r\n");
+        printf("+ HALTED --------------------------------------------+\r\n");
+        printf("| IP    | IR    | A    | B    | C    | D    | F OCSZ |\r\n");
+        printf("+-------+-------+------+------+------+------+--------+\r\n");
+      }
     }
+
+    // Update peripherals
+    for (int i = 0; i < PER_COUNT; ++i) {
+      per = peripherals[i];
+      if (per == NULL || !per->init)
+        continue;
+
+      must_run = 1;
+      per->update(cu);
+    }
+
+    usleep(8000);
   }
 
-  printf("+-------+-------+------+------+------+------+--------+\r\n");
-  printf("+ HALTED --------------------------------------------+\r\n");
-  printf("| IP    | IR    | A    | B    | C    | D    | F OCSZ |\r\n");
-  printf("+-------+-------+------+------+------+------+--------+\r\n");
+  for (int i = 0; i < PER_COUNT; ++i) {
+    per = peripherals[i];
+    if (per == NULL || !per->init)
+      continue;
+
+    per->destroy(cu);
+  }
 
   // Clean up
   free(cu);
-  gui_exit();
   return 0;
 }
