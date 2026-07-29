@@ -1,3 +1,4 @@
+#include "SDL_keycode.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -47,27 +48,32 @@ int main(void) {
 
   int display = gui_create_texture(-1, 800, 800, 0, 0);
   int display2 = gui_create_texture(-1, 160, 160, 0, 0);
-  int display3 = gui_create_texture(-1, 500, 500, 150, 150);
+  int display3 = gui_create_texture(display2, 500, 500, 150, 150);
 
-  gui_attach_texture(display3, display);
+  gui_rename_window(display, "Display");
+  gui_rename_window(display2, "Display 2");
+  gui_rename_window(display3, "Display 3");
 
   while (running) {
     while (SDL_PollEvent(&event)) {
-      // printf("EVENT: %d (QUIT=%d)\r\n", event.type, SDL_QUIT);
-
       if (event.type == SDL_QUIT) {
         running = 0;
         break;
       }
 
       else if (event.type == SDL_WINDOWEVENT || event.type == SDL_KEYDOWN) {
-        gui_handle_evt(&event);
+        if (event.key.keysym.sym == SDLK_KP_ENTER) {
+          gui_detach_texture(display3, "Display 3");
+        }
+
+        gui_handle_evt(&event); // GUI global event handler
       }
     }
 
     gui_redraw_texture(display);
     gui_redraw_texture(display2);
     gui_redraw_texture(display3);
+
     usleep(8000);
   }
 
