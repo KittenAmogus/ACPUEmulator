@@ -4,10 +4,8 @@
 #include <unistd.h>
 
 #include <control.h>
+#include <gui.h>
 #include <interpreter.h>
-#include <peripheral.h>
-
-#include <display.h>
 
 uint8_t program[] = {
     // TODO: Assembler
@@ -21,16 +19,7 @@ uint8_t program[] = {
     0x01,       // hlt
 };
 
-typedef enum {
-  PER_DISPLAY = 0,
-  PER_KBD = 1,
-  PER_TERM = 2,
-  PER_DIGINT = 3,
-  PER_COUNT = 4,
-} peripheral_e;
-
 uint32_t active_window_id = 0;
-peripheral_t *peripherals[] = {NULL, NULL, NULL, NULL};
 
 uint8_t on_port_read(uint8_t port) { return 0x00; }
 void on_port_write(uint8_t port, uint8_t value) {}
@@ -53,79 +42,39 @@ int main(void) {
     return -1;
   }
 
-  // Fill peripherals
-  peripherals[PER_DISPLAY] = &per_display;
-
-  /* === Init peripherals === */
-  peripheral_t *display = peripherals[PER_DISPLAY];
-  display->create(cu);
-
+  SDL_Event event;
   int running = 1;
-  int must_run = 1;
-  int need_update = 1;
 
-  SDL_Event evt;
-  peripheral_t *per;
+  int display = gui_create_texture(-1, 800, 800, 0, 0);
+  int display2 = gui_create_texture(-1, 160, 160, 0, 0);
+  int display3 = gui_create_texture(-1, 500, 500, 150, 150);
 
-  while (running && must_run) {
-    while (SDL_PollEvent(&evt)) {
-      for (int i = 0; i < PER_COUNT; ++i) {
-        per = peripherals[i];
-        if (per == NULL || !per->init)
-          continue;
+  gui_attach_texture(display3, display);
 
-        if (evt.type == SDL_WINDOWEVENT) {
-          switch (evt.window.event) {
-          case SDL_WINDOWEVENT_FOCUS_GAINED:
-            active_window_id = evt.window.windowID;
-            break;
-          }
-        }
+  while (running) {
+    while (SDL_PollEvent(&event)) {
+      // printf("EVENT: %d (QUIT=%d)\r\n", event.type, SDL_QUIT);
 
-        if (evt.type == SDL_KEYDOWN &&
-            evt.window.windowID == active_window_id) {
-          printf("KEYDOWN: %02x\r\n", evt.key.keysym.scancode);
-        }
+      if (event.type == SDL_QUIT) {
+        running = 0;
+        break;
+      }
 
-        per->onevent(cu, evt);
+      else if (event.type == SDL_WINDOWEVENT || event.type == SDL_KEYDOWN) {
+        gui_handle_evt(&event);
       }
     }
 
-    must_run = 0;
-    if (need_update) {
-      must_run = 1;
-      if (!update_control_unit(cu)) {
-        need_update = 0;
-
-        printf("+-------+-------+------+------+------+------+--------+\r\n");
-        printf("+ HALTED --------------------------------------------+\r\n");
-        printf("| IP    | IR    | A    | B    | C    | D    | F OCSZ |\r\n");
-        printf("+-------+-------+------+------+------+------+--------+\r\n");
-      }
-    }
-
-    // Update peripherals
-    for (int i = 0; i < PER_COUNT; ++i) {
-      per = peripherals[i];
-      if (per == NULL || !per->init)
-        continue;
-
-      must_run = 1;
-      per->update(cu);
-    }
-
+    gui_redraw_texture(display);
+    gui_redraw_texture(display2);
+    gui_redraw_texture(display3);
     usleep(8000);
   }
 
-  for (int i = 0; i < PER_COUNT; ++i) {
-    per = peripherals[i];
-    if (per == NULL || !per->init)
-      continue;
+  gui_redraw_texture(display);
+  gui_redraw_texture(display2);
+  gui_redraw_texture(display3);
 
-    per->destroy(cu);
-  }
-
-  // Clean up
+  SDL_Quit();
   free(cu);
-  return 0;
 }
