@@ -6,14 +6,14 @@ CC = gcc
 # Debug (unoptimized, debug things)
 CFLAGS_DEBUG = -std=c11 -O0 -g3 -ggdb -Wall -Wextra -Wpedantic \
                -Wshadow -Wdouble-promotion -Wformat=2 \
-               -fno-omit-frame-pointer -DDEBUG -lm
-LDFLAGS_DEBUG = -fno-omit-frame-pointer -rdynamic
+               -fno-omit-frame-pointer -DDEBUG -isystem include
+LDFLAGS_DEBUG = -fno-omit-frame-pointer -rdynamic -lm
 
 # Release (optimized, no debug things)
 CFLAGS_RELEASE = -std=c11 -O3 -march=native -flto=auto -fomit-frame-pointer \
                  -ffast-math -ffunction-sections -fdata-sections \
-                 -DNDEBUG -lm
-LDFLAGS_RELEASE = -flto=auto -s -Wl,--gc-sections
+                 -DNDEBUG -isystem include
+LDFLAGS_RELEASE = -flto=auto -s -Wl,--gc-sections -lm
 
 # Default - debug
 CFLAGS = $(CFLAGS_DEBUG)
