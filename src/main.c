@@ -17,40 +17,51 @@ int main(void) {
   LOG_EXCEPT("EXCEPTION");
   LOG_ERROR("ERROR");
 
-  // Init simulation
+  // Init and start simulation
   sim_init();
-  LOG_INFO("Simulation state: %d", sim_state());
-
-  // Start simulation
   sim_continue();
-  LOG_INFO("Simulation state: %d", sim_state());
 
-  for (int i = 0; i < 10; ++i) {
-    LOG_DEBUG("tick");
+  // Create SDL window and renderer
+  int a = SDL_WINDOWPOS_CENTERED;
+  uint32_t fl = SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC;
+  SDL_Window *window =
+      SDL_CreateWindow("Title", a, a, 800, 800, SDL_WINDOW_SHOWN);
+  SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, fl);
 
-    // Redraw
-    sim_lock();
-    LOG_INFO("Simulation state: %d", sim_state());
-
-    // Draw debug delay
-    usleep(1600);
-
-    if (i == 3) {
-      LOG_DEBUG("Pausing");
-
-      // Pause test
-      sim_pause();
-      LOG_INFO("Simulation state: %d", sim_state());
-      sleep(3); // Wait 3 sec
-      sim_continue();
-      LOG_INFO("Simulation state: %d", sim_state());
+  int running = 1;
+  while (running) {
+    SDL_Event evt;
+    while (SDL_PollEvent(&evt)) {
+      if (evt.type == SDL_QUIT) {
+        running = 0;
+      }
     }
 
+    // Reading data...
+    sim_lock();
+    usleep(80000);
     sim_unlock();
 
-    // FPS Delay
-    usleep(800000);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 1);
+    SDL_RenderClear(renderer);
+
+    SDL_Rect rect = {
+        .x = 100,
+        .y = 100,
+        .w = 256,
+        .h = 256,
+    };
+
+    SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0xFF, 0xFF);
+    SDL_RenderFillRect(renderer, &rect);
+
+    SDL_RenderPresent(renderer);
   }
+
+  // CLose SDL
+  SDL_DestroyRenderer(renderer);
+  SDL_DestroyWindow(window);
+  SDL_Quit();
 
   // Close simulation
   sim_close();

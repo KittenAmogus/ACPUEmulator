@@ -96,13 +96,13 @@ int sim_continue(void) {
 
 int sim_lock(void) {
   SDL_LockMutex(mutex);
-  LOG_DEBUG("Locked sim");
+  // LOG_DEBUG("Locked sim");
   return 1;
 }
 
 int sim_unlock(void) {
   SDL_UnlockMutex(mutex);
-  LOG_DEBUG("Unlocked sim");
+  // LOG_DEBUG("Unlocked sim");
   return 1;
 }
 
