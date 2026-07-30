@@ -3,19 +3,17 @@
 
 #include <SDL2/SDL.h>
 
-#define GUI_MAINWINDOW_WIDTH 1280
-#define GUI_MAINWINDOW_HEIGHT 720
 #define GUI_MAX_TEXTURES 16
-
-#define GUI_MAIN_TITLE "ACPU Control window"
 
 #define GUI_RENDERER_FLAGS                                                     \
   (SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)
 
+// If not set, child detaches instead of destroying
+#define ONCLOSE_DESTROY // Destroy window if parent destroyed
+
 typedef int (*gui_redraw_t)(SDL_Renderer *renderer);
-typedef int (*gui_onmouse_t)(SDL_Event *evt);
-typedef int (*gui_onfocus_t)(SDL_Event *evt);
-typedef int (*gui_onkey_t)(SDL_Event *evt);
+
+extern void per_on_gui_moved(int oldID, int newID);
 
 typedef struct {
   // Global data
@@ -32,28 +30,35 @@ typedef struct {
   SDL_Texture *texture;   // Texture (Must be different)
   SDL_Renderer *renderer; // Renderer (Can be parent's)
 
-  // Peripheral private functions
-  gui_redraw_t _redraw; // On gui_redraw_texture
-
-  gui_onkey_t _onkey;     // On KEYDOWN/KEYUP events
-  gui_onfocus_t _onfocus; // On FOCUS_(GAINED/LOST) events,
-                          // On WINDOW(MINIMIZED/RESTORED) events
-  gui_onmouse_t _onmouse; // On MOUSE(BUTTONDOWN/BUTTONUP/MOTION) events
+  gui_redraw_t redraw; // GUI private function
 } gui_data_t;
 
-int gui_create_texture(int parent, int width, int height, int offx,
-                       int offy);    // Create texture
-int gui_remove_texture(int texture); // Delete texture (and window if detached)
+typedef struct {
+  gui_data_t pool[GUI_MAX_TEXTURES];
+  int count;
+} gui_mgr_t;
 
-int gui_detach_texture(int texture,
-                       const char *window_title); // Detach into separate window
-int gui_attach_texture(int texture,
-                       int parent); // Attach to parent and destroy window
+/* Signle GUI funcs */
+int gui_check_windowID(int gui, int windowID);
+int gui_link_redraw(int gui, gui_redraw_t func);
 
-int gui_move_texture(int texture, int offx, int offy);     // Change offsets
-int gui_rename_window(int texture, const char *new_title); // Change title
+int gui_create(int parent_gui, int width, int height, int offx, int offy,
+               const char *title);
+int gui_destroy(int gui);
+int gui_redraw(int gui);
 
-int gui_redraw_texture(int texture); // Redraw texture (and window if detached)
-int gui_handle_evt(SDL_Event *evt);  // Handle event in parent's window
+int gui_get_offset(int gui, int *offxptr, int *offyptr);
+int gui_get_title(int gui, const char **titleptr);
+
+int gui_set_offset(int gui, int offx, int offy);
+int gui_set_title(int gui, const char *title);
+
+int gui_get_detached(int gui);
+
+int gui_attach(int gui, int parent_gui);
+int gui_detach(int gui, const char *title);
+
+/* Global GUI funcs */
+int gui_destroyall(void);
 
 #endif // GUI_H

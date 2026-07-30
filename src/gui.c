@@ -1,288 +1,245 @@
-#include "SDL_events.h"
-#include "SDL_render.h"
-#include "SDL_video.h"
 #include <SDL2/SDL.h>
 #include <control.h>
 #include <gui.h>
 
-#include <stdio.h>
-#include <string.h>
+#define LOG_MODULE "GUI"
+#include <log.h>
 
-static gui_data_t textures[GUI_MAX_TEXTURES] = {0};
-static int textures_pos = 0;
+static gui_mgr_t mgr;
 
-// Log functions
-static inline void logtxt(const char *txt) {
-  fprintf(stdout, "GUI: %s\r\n", txt);
+static inline gui_data_t *getdata(int gui) {
+  if (gui < 0 || gui >= mgr.count) {
+    LOG_ERROR("Invalid ID: %d", gui);
+    return NULL; // Cause segfault
+  }
+  return &mgr.pool[gui];
 }
 
-static inline void logerr(const char *err) {
-  fprintf(stderr, "[ERROR] GUI: %s\r\n", err);
+static int allocdata(void) {
+  if (mgr.count >= GUI_MAX_TEXTURES) {
+    LOG_EXCEPT("Could not allocate GUI, no memory");
+    return -1;
+  }
+
+  ++mgr.count;
+  LOG_DEBUG("Allocated ID=%d, count=%d", mgr.count - 1, mgr.count);
+  return mgr.count - 1;
 }
 
-// Get gui_data from index
-static inline gui_data_t *getdata(int id) { return &(textures[id]); }
-
-// Create window
-static SDL_Window *create_window(const char *title, int width, int height) {
+static SDL_Window *create_window(const char *title, int w, int h) {
   return SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                          width, height, SDL_WINDOW_SHOWN);
+                          w, h, SDL_WINDOW_SHOWN);
+  LOG_DEBUG("Created window %dx%d", w, h);
 }
 
-// Create renderer
 static SDL_Renderer *create_renderer(SDL_Window *window) {
   return SDL_CreateRenderer(window, -1, GUI_RENDERER_FLAGS);
+  LOG_DEBUG("Created renderer");
 }
 
-// Create texture
-int gui_create_texture(int parent, int width, int height, int offx, int offy) {
-  if (textures_pos >= GUI_MAX_TEXTURES) {
-    logerr("No space for another texture");
-    return -1;
-  }
+static SDL_Texture *create_texture(SDL_Renderer *renderer, int w, int h) {
+  return SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888,
+                           SDL_TEXTUREACCESS_TARGET, w, h);
+  LOG_DEBUG("Created texture %dx%d", w, h);
+}
 
-  if (width < 1 || height < 1) {
-    logerr("Invalid texture size");
-    return -1;
-  }
+static int gui_resort(void) {
+  int new_count = mgr.count;
 
-  gui_data_t *data = getdata(textures_pos);
+  for (int i = 0; i < new_count; ++i) {
+    gui_data_t *dest = getdata(i);
 
-  if (parent == -1) {
-    // Create window
-    data->window = create_window(GUI_MAIN_TITLE, width, height);
-    if (!data->window) {
-      logerr("Cannot create window");
-      return -1;
+    if (!dest->init) {
+      --new_count;
+      gui_data_t *src = getdata(new_count);
+      *dest = *src;
+      // memcpy(dest, src, sizeof(gui_data_t));
+      dest->id = i;
+
+      per_on_gui_moved(new_count, i); // Tell global world about move
+      --i;                            // Check again
     }
+  }
+  mgr.count = new_count;
 
-    // Create renderer
+  LOG_DEBUG("Resorted array");
+  return 1;
+}
+
+static inline uint32_t getwinID(int gui) {
+  return SDL_GetWindowID(getdata(gui)->window);
+}
+
+int gui_check_windowID(int gui, int windowID) {
+  return getwinID(gui) == (uint32_t)windowID;
+}
+
+int gui_link_redraw(int gui, gui_redraw_t func) {
+  getdata(gui)->redraw = func;
+  LOG_DEBUG("Linked redraw function ID=%d", gui);
+  return 1;
+}
+
+int gui_create(int parent_gui, int width, int height, int offx, int offy,
+               const char *title) {
+  int gui = allocdata();
+  if (gui < 0)
+    return 0;
+
+  gui_data_t *data = getdata(gui);
+  data->id = gui;
+
+  if (parent_gui >= 0) {
+    // Set parent's window and renderer
+    gui_data_t *parent = getdata(parent_gui);
+    data->window = parent->window;
+    data->renderer = parent->renderer;
+    data->detached = 0;
+    LOG_INFO("Created attached peripheral, ID=%d", data->id);
+  } else {
+    // Create own window and renderer
+    data->window = create_window(title, width, height);
     data->renderer = create_renderer(data->window);
     data->detached = 1;
-
-  } else {
-    // Copy window and renderer from parent
-    gui_data_t *parent_data = getdata(parent);
-    data->window = parent_data->window;
-    data->renderer = parent_data->renderer;
-    data->detached = 0;
-
-    logtxt("Created new attached texture");
+    LOG_INFO("Created detached peripheral, ID=%d", data->id);
   }
 
-  // Create new texture
-  data->texture = SDL_CreateTexture(data->renderer, SDL_PIXELFORMAT_RGBA8888,
-                                    SDL_TEXTUREACCESS_TARGET, width, height);
-
-  // Create data
-  data->init = 1;
+  // Create rest of data
+  data->texture = create_texture(data->renderer, width, height);
   data->offx = offx;
   data->offy = offy;
-  data->id = textures_pos;
+  data->init = 1;
+  data->id = gui;
 
-  ++textures_pos;
-  return data->id;
+  return gui;
 }
 
-int gui_detach_texture(int texture, const char *window_title) {
-  if (texture < 0 || texture > textures_pos) {
-    logerr("Attempt to detach nonexisting texture");
-    return 0;
-  }
-
-  gui_data_t *data = getdata(texture);
-  if (!data->init) {
-    logerr("Attempt to detach uninitialized texture");
-    return 0;
-  }
-
-  if (data->detached)
+static int gui_free(int gui) {
+  gui_data_t *data = getdata(gui);
+  if (!data->init)
     return 1;
 
-  // Get texture size
+  if (data->detached) {
+    uint32_t winID = SDL_GetWindowID(data->window);
+
+    for (int i = 0; i < mgr.count; ++i) {
+      if (gui_check_windowID(i, winID)) {
+        getdata(i)->init = 0;
+        LOG_DEBUG("Marked to destroy ID=%d", i);
+        // on_parent_destroy(i);
+      }
+    }
+
+    // SDL_DestroyWindow(data->window);
+    // SDL_DestroyRenderer(data->renderer);
+  }
+
+  // SDL_DestroyTexture(data->texture);
+  // gui_resort(data->id);
+  return 1;
+}
+
+int gui_redraw(int gui) {
+  gui_data_t *data = getdata(gui);
+  if (data->redraw)
+    return data->redraw(data->renderer);
+  else {
+    // LOG_EXCEPT("No redraw function");
+    return 1;
+  }
+}
+
+int gui_get_offset(int gui, int *offxptr, int *offyptr) {
+  gui_data_t *data = getdata(gui);
+  *offxptr = data->offx;
+  *offyptr = data->offy;
+  return 1;
+}
+
+int gui_get_title(int gui, const char **titleptr) {
+  *titleptr = SDL_GetWindowTitle(getdata(gui)->window);
+  return 1;
+}
+
+int gui_set_offset(int gui, int offx, int offy) {
+  gui_data_t *data = getdata(gui);
+  data->offx = offx;
+  data->offy = offy;
+  LOG_DEBUG("Set offset ID=%d, (%d, %d)", gui, offx, offy);
+  return 1;
+}
+
+int gui_set_title(int gui, const char *title) {
+  SDL_SetWindowTitle(getdata(gui)->window, title);
+  LOG_DEBUG("Set title ID=%d, %s", gui, title);
+  return 1;
+}
+
+int gui_get_detached(int gui) { return getdata(gui)->detached; }
+
+int gui_attach(int gui, int parent_gui) {
+  gui_data_t *data = getdata(gui);
+  gui_data_t *parent = getdata(parent_gui);
+
+  if (!parent->detached) {
+    LOG_EXCEPT("Attaching to attached texture is forbidden");
+    return 0;
+  }
+
+  if (!data->detached) {
+    LOG_INFO("Attaching attached texture is forbidden");
+    return 1;
+  }
+
+  SDL_DestroyWindow(data->window);
+  SDL_DestroyRenderer(data->renderer);
+
+  data->window = parent->window;
+  data->renderer = parent->renderer;
+  data->detached = 0;
+
+  LOG_INFO("Attached %d to %d", gui, parent_gui);
+  return 1;
+}
+
+int gui_detach(int gui, const char *title) {
+  gui_data_t *data = getdata(gui);
+  if (data->detached) {
+    LOG_INFO("Attempt to detach detached texture ID=%d", gui);
+    return 1;
+  }
+
   int width, height;
   SDL_QueryTexture(data->texture, NULL, NULL, &width, &height);
 
-  // Create window size of texture
-  data->window = create_window(window_title, width, height);
-
-  if (!data->window) {
-    logerr("Cannot create window");
+  SDL_Window *window = create_window(title, width, height);
+  if (!window) {
+    LOG_EXCEPT("Cannot create window to detach ID=%d", gui);
     return 0;
   }
 
-  // Create renderer and detach texture
-  data->renderer = SDL_CreateRenderer(data->window, -1, GUI_RENDERER_FLAGS);
+  data->window = window;
+  data->renderer = create_renderer(data->window);
   data->detached = 1;
 
-  logtxt("Created new window");
+  LOG_INFO("Detached %d", gui);
   return 1;
 }
 
-// Change offsets
-int gui_move_texture(int texture, int offx, int offy) {
-  if (texture < 0 || texture >= textures_pos) {
-    logerr("Attempt to move nonexisting texture");
-    return 0;
-  }
-
-  gui_data_t *data = getdata(texture);
-  data->offx = offx;
-  data->offy = offy;
+int gui_destroy(int gui) {
+  gui_free(gui); // Mark to delete
+  gui_resort();  // Actually delete
+  LOG_INFO("Destroyed %d", gui);
   return 1;
 }
 
-// Attach texture
-int gui_attach_texture(int texture, int parent) {
-  if (texture < 0 || texture >= textures_pos) {
-    logerr("Attempt to attach nonexisting texture");
-    return 0;
+/* Global GUI funcs */
+int gui_destroyall(void) {
+  for (int i = 0; i < mgr.count; ++i) {
+    gui_free(i); // Mark to delete
   }
 
-  if (parent < 0 || parent >= textures_pos) {
-    logerr("Attempt to attach texture without parent");
-    return 0;
-  }
-
-  // Get data
-  gui_data_t *data = getdata(texture);
-  gui_data_t *pdata = getdata(parent);
-
-  if (!data->detached)
-    return 1;
-
-  // Destroy window
-  SDL_DestroyRenderer(data->renderer);
-  SDL_DestroyWindow(data->window);
-
-  // Attach to parent's window
-  data->renderer = pdata->renderer;
-  data->window = pdata->window;
-  data->detached = 0;
-
-  logtxt("Attached texture");
-  return 1;
-}
-
-// Remove texture
-int gui_remove_texture(int texture) {
-  if (texture < 0 || texture >= textures_pos) {
-    logerr("Attempt to remove nonexisting texture");
-    return 0;
-  }
-
-  gui_data_t *data = getdata(texture);
-
-  // Destroy texture
-  SDL_DestroyTexture(data->texture);
-  data->texture = NULL;
-
-  // Destroy window if is parent
-  if (data->detached) {
-    SDL_DestroyRenderer(data->renderer);
-    SDL_DestroyWindow(data->window);
-    data->renderer = NULL;
-    data->window = NULL;
-    data->init = 0;
-
-    logtxt("Removed window");
-  }
-
-  // Move last texture to this id
-  // to prevent garbage and false
-  // updates
-  --textures_pos;
-  if (data->id != textures_pos) {
-    gui_data_t *last = getdata(textures_pos);
-    last->id = data->id;
-    memcpy(data, last, sizeof(gui_data_t));
-  }
-
-  logtxt("Removed texture");
-  return 1;
-}
-
-int gui_redraw_texture(int texture) {
-  if (texture < 0 || texture >= textures_pos) {
-    // logerr("Attempt to redraw nonexisting texture");
-    return 0;
-  }
-
-  gui_data_t *data = getdata(texture);
-
-  // Create target rectangle
-  SDL_Rect rect;     // Target rect
-  int width, height; // Size of target rect
-
-  if (!data->detached) {
-    // Get texture size
-    SDL_QueryTexture(data->texture, NULL, NULL, &width, &height);
-
-    // Offset by offx and offy
-    rect.x = data->offx;
-    rect.y = data->offy;
-  } else {
-    // Get window size
-    SDL_GetWindowSize(data->window, &width, &height);
-
-    // No offset
-    rect.x = 0;
-    rect.y = 0;
-  }
-
-  rect.w = width;
-  rect.h = height;
-
-  // Call private draw function
-  if (data->_redraw)
-    data->_redraw(data->renderer);
-
-  // Copy texture
-  SDL_RenderCopy(data->renderer, data->texture, NULL, &rect);
-
-  // Swap buffers
-  SDL_RenderPresent(data->renderer);
-  return 1;
-}
-
-int gui_handle_evt(SDL_Event *evt) {
-  gui_data_t *data;
-
-  if (evt->type == SDL_WINDOWEVENT) {
-    switch (evt->window.event) {
-
-    case SDL_WINDOWEVENT_CLOSE:
-
-      // Close all textures on closed window
-      for (int i = 0; i < textures_pos; ++i) {
-        data = getdata(i);
-        if (SDL_GetWindowID(data->window) == evt->window.windowID) {
-          gui_remove_texture(i);
-        }
-      }
-      break;
-    }
-  }
-
-  else if (evt->type == SDL_KEYDOWN) {
-    switch (evt->key.keysym.sym) {}
-  }
-
-  return 1;
-}
-
-int gui_rename_window(int texture, const char *new_title) {
-  if (texture < 0 || texture >= textures_pos) {
-    logerr("Attempt to rename nonexisting texture");
-    return 0;
-  }
-
-  gui_data_t *data = getdata(texture);
-  if (!data->detached) {
-    logerr("Attempt to rename undetached texture");
-    return 0;
-  }
-
-  SDL_SetWindowTitle(data->window, new_title);
+  gui_resort(); // Actually delete
+  LOG_INFO("Destroyed all");
   return 1;
 }
