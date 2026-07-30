@@ -12,7 +12,7 @@ static SDL_atomic_t running;   // Is running (0 - paused)
 static SDL_atomic_t need_stop; // Closing (1 - break mainloop)
 
 static int sim_thread_function(void *data) {
-  LOG_INFO("Simulation started");
+  LOG_DEBUG("Simulation thread started");
 
   while (!SDL_AtomicGet(&need_stop)) {
 
@@ -21,7 +21,7 @@ static int sim_thread_function(void *data) {
       LOG_DEBUG("sim sleep");
       usleep(400000);
     }
-    LOG_INFO("Unpaused");
+    LOG_DEBUG("Unpaused");
 
     // Running and not need to stop
     while (!SDL_AtomicGet(&need_stop) && (SDL_AtomicGet(&running) != 0)) {
@@ -35,7 +35,7 @@ static int sim_thread_function(void *data) {
       // TPS Delay
       usleep(400000);
     }
-    LOG_INFO("Paused");
+    LOG_DEBUG("Paused");
   }
 
   return 0;
@@ -54,6 +54,8 @@ int sim_init(void) {
   init = 1;
 
   thread = SDL_CreateThread(sim_thread_function, "sim_thread", NULL);
+
+  LOG_INFO("Simulation started");
   return 1;
 }
 
@@ -91,6 +93,18 @@ int sim_continue(void) {
     SDL_AtomicSet(&running, 1);
 
   LOG_INFO("Continued simulation");
+  return 1;
+}
+
+int sim_toggle(void) {
+  if (!init)
+    return 0;
+
+  // Can't toggle stopping simulation
+  if (!SDL_AtomicGet(&need_stop))
+    SDL_AtomicSet(&running, !SDL_AtomicGet(&running));
+
+  LOG_INFO("Toggled simulation, running = %d", SDL_AtomicGet(&running));
   return 1;
 }
 

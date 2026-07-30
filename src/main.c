@@ -35,6 +35,15 @@ int main(void) {
       if (evt.type == SDL_QUIT) {
         running = 0;
       }
+
+      if (evt.type == SDL_KEYDOWN) {
+        if (evt.key.keysym.sym == SDLK_SPACE) {
+          LOG_INFO("Received SPACE");
+          sim_lock();
+          sim_toggle();
+          sim_unlock();
+        }
+      }
     }
 
     // Reading data...

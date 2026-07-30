@@ -11,6 +11,7 @@ typedef enum {
 int sim_init(void);  // Init simulation
 int sim_close(void); // Close simulation
 
+int sim_toggle(void);   // Toggle pause
 int sim_pause(void);    // Pause executing
 int sim_continue(void); // Continue executing or restart if stopped
 
