@@ -151,11 +151,9 @@ static int gui_free(int gui) {
 int gui_redraw(int gui) {
   gui_data_t *data = getdata(gui);
   if (data->redraw)
-    return data->redraw(data->renderer);
-  else {
-    // LOG_EXCEPT("No redraw function");
-    return 1;
-  }
+    data->redraw(data->renderer);
+  SDL_RenderPresent(data->renderer);
+  return 1;
 }
 
 int gui_get_offset(int gui, int *offxptr, int *offyptr) {
