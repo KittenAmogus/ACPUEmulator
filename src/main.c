@@ -7,23 +7,12 @@
 #include <gui.h>
 #include <interpreter.h>
 #include <peripheral/peripheral.h>
+#include <program.h>
 
 #include <peripheral/display.h>
 
 #define LOG_MODULE "MAIN"
 #include <log.h>
-
-uint8_t program[] = {
-    // TODO: Assembler
-    0xEC,       // rnd a
-    0xED,       // rnd b
-    0x64,       // add a, b
-    0x54, 0x01, // ldi a, 0x01
-    0x55, 0xAA, // ldi b, 0xAA
-    0x00,       // nop
-    0x00,       // nop
-    0x01,       // hlt
-};
 
 uint32_t active_window_id = 0;
 
@@ -36,7 +25,11 @@ static control_unit_t *init_control_unit(void) {
     return NULL;
 
   memset(cu, 0, sizeof(control_unit_t));
-  memcpy(cu->ram.ram.bank_raw[0], program, sizeof(program)); // TODO: Assembler
+
+  uint32_t size;
+  uint8_t *program = load_program(&size);
+
+  memcpy(cu->ram.ram.bank_raw[0], program, size);
 
   LOG_INFO("Loaded program %d bytes", sizeof(program));
   return cu;
@@ -96,14 +89,14 @@ int main(void) {
       per_handle_event(&event);
     }
 
+    update_control_unit(cu);
+
+    per_update(display1);
+    per_update(display2);
+
     per_redraw(display1);
     per_redraw(display2);
 
-    /*// UPDATE
-    per_update(display);
-
-    // DRAW
-    per_redraw(display);*/
     usleep(8000);
   }
 

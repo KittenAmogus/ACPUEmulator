@@ -21,15 +21,18 @@ static int display_redraw(SDL_Renderer *renderer) {
 }
 
 static int display_onfocus(SDL_Event *evt) {
-  LOG_DEBUG("Focus %d", evt->window.windowID);
+  // LOG_DEBUG("Focus %d", evt->window.windowID);
+  return 1;
 }
 
 static int display_onmouse(SDL_Event *evt) {
-  LOG_DEBUG("Mouse %d", evt->motion.windowID);
+  // LOG_DEBUG("Mouse %d", evt->motion.windowID);
+  return 1;
 }
 
 static int display_onkey(SDL_Event *evt) {
-  LOG_DEBUG("Key %d", evt->key.windowID);
+  // LOG_DEBUG("Key %d", evt->key.windowID);
+  return 1;
 }
 
 static int display_create(control_unit_t *cu, gui_data_t *gui) {}
