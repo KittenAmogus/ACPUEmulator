@@ -25,6 +25,9 @@ typedef enum {
 loglevel_e log_getlvl(void);
 void log_setlvl(loglevel_e level);
 
+void log_set_color(int enable);
+int log_get_color(void);
+
 void log_error(const char *module, const char *fmt, ...);
 void log_except(const char *module, const char *fmt, ...);
 void log_warning(const char *module, const char *fmt, ...);

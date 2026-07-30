@@ -48,9 +48,14 @@ typedef struct {
   per_write_byte_t write_byte; // Handle port writing
 } peripheral_t;
 
+typedef struct {
+  peripheral_t pool[GUI_MAX_TEXTURES];
+  int count;
+} per_mgr_t;
+
 /* Single peripheral funcs */
-int per_create(peripheral_t *source, peripheral_t *parent, control_unit_t *cu,
-               int ox, int oy);
+int per_create(peripheral_t *source, int parent, control_unit_t *cu, int ox,
+               int oy);
 int per_update(int per);
 int per_destroy(int per);
 int per_redraw(int per);

@@ -8,6 +8,8 @@
 #include <interpreter.h>
 #include <peripheral/peripheral.h>
 
+#include <peripheral/display.h>
+
 #define LOG_MODULE "MAIN"
 #include <log.h>
 
@@ -40,12 +42,9 @@ static control_unit_t *init_control_unit(void) {
   return cu;
 }
 
-int moved = 0;
-
-void per_on_gui_moved(int oldID, int newID) { moved = 1; }
-
 int main(void) {
   log_setlvl(LOG_LVL_DEBUG);
+  log_set_color(1);
 
   /* === Init simulation === */
   control_unit_t *cu = init_control_unit();
@@ -55,16 +54,29 @@ int main(void) {
   }
 
   /* === Create peripherals === */
-  // int display = per_create(&per_display, NULL, cu, 0, 0);
-  int display1 = gui_create(-1, 800, 800, 0, 0, "Display");
-  int display2 = gui_create(display1, 600, 600, 100, 100, NULL);
-  LOG_INFO("Created peripherals");
 
-  gui_link_redraw(display1, NULL);
-  gui_link_redraw(display2, NULL);
+  // int display = per_create(&per_display, NULL, cu, 0, 0);
+  /*int display1 = gui_create(-1, 800, 800, 0, 0, "Display");
+  int display2 = gui_create(display1, 600, 600, 100, 100, NULL);*/
+
+  int display1 = per_create(&per_display, -1, cu, 0, 0);
+  int display2 = per_create(&per_display, display1, cu, 100, 100);
+
+  LOG_INFO("Created peripherals, D1=%d, D2=%d", display1, display2);
+
+  if (display1 < 0 || display2 < 0)
+    return -1;
 
   SDL_Event event;
   int running = 1;
+
+  fprintf(stdout, "\r\n");
+  LOG_DEBUG("DEBUG");
+  LOG_INFO("INFO");
+  LOG_WARNING("WARNING");
+  LOG_EXCEPT("EXCEPTION");
+  LOG_ERROR("ERROR");
+  fprintf(stdout, "\r\n");
 
   while (running) {
     while (SDL_PollEvent(&event)) {
@@ -80,12 +92,12 @@ int main(void) {
           gui_detach(display2, "Display 2");
         }
       }
+
+      per_handle_event(&event);
     }
 
-    if (!moved) {
-      gui_redraw(display1);
-      gui_redraw(display2);
-    }
+    per_redraw(display1);
+    per_redraw(display2);
 
     /*// UPDATE
     per_update(display);
@@ -95,7 +107,7 @@ int main(void) {
     usleep(8000);
   }
 
-  gui_destroyall();
+  per_destroyall();
   // per_destroy(display);
   SDL_Quit();
   free(cu);

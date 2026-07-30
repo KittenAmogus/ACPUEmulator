@@ -39,7 +39,8 @@ typedef struct {
 } gui_mgr_t;
 
 /* Signle GUI funcs */
-int gui_check_windowID(int gui, int windowID);
+int gui_check_windows(int gui1, int gui2);
+int gui_check_windows_ID(int gui1, int gui2);
 int gui_link_redraw(int gui, gui_redraw_t func);
 
 int gui_create(int parent_gui, int width, int height, int offx, int offy,

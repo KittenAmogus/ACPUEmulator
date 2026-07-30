@@ -50,7 +50,12 @@ static int gui_resort(void) {
     gui_data_t *dest = getdata(i);
 
     if (!dest->init) {
+
       --new_count;
+
+      if (dest->id == new_count) // Do not move
+        continue;
+
       gui_data_t *src = getdata(new_count);
       *dest = *src;
       // memcpy(dest, src, sizeof(gui_data_t));
@@ -70,8 +75,12 @@ static inline uint32_t getwinID(int gui) {
   return SDL_GetWindowID(getdata(gui)->window);
 }
 
-int gui_check_windowID(int gui, int windowID) {
-  return getwinID(gui) == (uint32_t)windowID;
+int gui_check_windows_ID(int gui, int winID) {
+  return getwinID(gui) == (uint32_t)winID;
+}
+
+int gui_check_windows(int gui1, int gui2) {
+  return getwinID(gui1) == getwinID(gui2);
 }
 
 int gui_link_redraw(int gui, gui_redraw_t func) {
@@ -123,7 +132,7 @@ static int gui_free(int gui) {
     uint32_t winID = SDL_GetWindowID(data->window);
 
     for (int i = 0; i < mgr.count; ++i) {
-      if (gui_check_windowID(i, winID)) {
+      if (gui_check_windows_ID(i, winID)) {
         getdata(i)->init = 0;
         LOG_DEBUG("Marked to destroy ID=%d", i);
         // on_parent_destroy(i);
