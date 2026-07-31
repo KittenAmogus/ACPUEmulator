@@ -1,10 +1,7 @@
 #include <interpreter.h>
 
 cmd_jmp_t jmp_map[48] = {
-    {0}, // HALT
-    {0}, // NOP
-    {0}, // Reserved
-         // JMP <imm>
+    // JMP <imm>
     {.dest = IREG_I, .flag = IFLAG_C, .noflag = 1, .invert = 0, .reg_dest = 0},
 
     // JMP <reg>
@@ -72,7 +69,11 @@ cmd_jmp_t jmp_map[48] = {
     {.dest = IREG_D, .flag = IFLAG_S, .noflag = 0, .invert = 1, .reg_dest = 1},
     {.dest = IREG_D, .flag = IFLAG_C, .noflag = 0, .invert = 1, .reg_dest = 1},
     {.dest = IREG_D, .flag = IFLAG_O, .noflag = 0, .invert = 1, .reg_dest = 1},
-};
+
+    // Fill
+    {0},
+    {0},
+    {0}};
 
 cmd_str_t store_map[16] = {
     // 0x30
@@ -121,15 +122,15 @@ cmd_ldr_t load_map[32] = {
 
     // 0x50
     {.dest = IREG_A, .src = IREG_I, .single = 1},
-    {.dest = IREG_A, .src = IREG_I, .single = 1},
-    {.dest = IREG_A, .src = IREG_I, .single = 1},
-    {.dest = IREG_A, .src = IREG_I, .single = 1},
+    {.dest = IREG_B, .src = IREG_I, .single = 1},
+    {.dest = IREG_C, .src = IREG_I, .single = 1},
+    {.dest = IREG_D, .src = IREG_I, .single = 1},
 
     // 0x54
     {.dest = IREG_A, .src = IREG_I, .single = 1, .imm = 1},
-    {.dest = IREG_A, .src = IREG_I, .single = 1, .imm = 1},
-    {.dest = IREG_A, .src = IREG_I, .single = 1, .imm = 1},
-    {.dest = IREG_A, .src = IREG_I, .single = 1, .imm = 1},
+    {.dest = IREG_B, .src = IREG_I, .single = 1, .imm = 1},
+    {.dest = IREG_C, .src = IREG_I, .single = 1, .imm = 1},
+    {.dest = IREG_D, .src = IREG_I, .single = 1, .imm = 1},
 
     // 0x58 - 0x5F (Reserved)
     {0},

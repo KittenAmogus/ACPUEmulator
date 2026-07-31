@@ -1,3 +1,6 @@
+#define LOG_MODULE "HANDLER"
+#include <logger.h>
+
 #include <control.h>
 #include <cpu.h>
 #include <interpreter.h>
@@ -162,20 +165,25 @@ void cu_jmp(control_unit_t *cu, cmd_jmp_t *cmd) {
   uint8_t dest;
 
   if (cmd->reg_dest) // Get from register
-    dest = REGISTER(cmd->reg_dest);
+    dest = REGISTER(cmd->dest);
   else {
     // Load from RAM (ip + 1)
     dest = GET_NEAR();
   }
 
-  // Check if must jump
-  uint8_t flag = GETFLAG(cmd->flag);
+  LOG_DEBUG("COMMAND: .noflag=%d .dest=%02x .regd=%d", cmd->noflag, cmd->dest,
+            cmd->reg_dest);
 
-  // Flag is same as needeed or not needed
-  if (cmd->noflag || (flag ^ cmd->invert)) {
-    // Jump (set ip)
-    cu->cpu.regs.ip = dest;
+  if (!cmd->noflag) {
+    // Check if must jump
+    uint8_t flag = GETFLAG(cmd->flag);
+    if (!(flag ^ cmd->invert)) {
+      LOG_DEBUG("NOT %02x", dest);
+      return;
+    }
   }
+  LOG_DEBUG("Jumped to %02x", dest);
+  cu->cpu.regs.ip = dest;
 }
 
 void cu_str(control_unit_t *cu, cmd_str_t *cmd) {
