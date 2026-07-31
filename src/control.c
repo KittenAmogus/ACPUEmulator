@@ -1,3 +1,6 @@
+#define LOG_MODULE "CONTROL UNIT"
+#include <logger.h>
+
 #include <stdint.h>
 #include <stdio.h>
 
@@ -29,7 +32,7 @@ static inline void print_state(control_unit_t *cu) {
       cu->cpu.regs.f.w & 15);
 }
 
-int update_control_unit(control_unit_t *cu) {
+int cu_update(control_unit_t *cu) {
   if (cu == (void *)0)
     return 0;
 
@@ -45,11 +48,14 @@ int update_control_unit(control_unit_t *cu) {
 
   // Reserved commands
   if (IS_RSVD(ir) || ir == 0x02) {
-    return 0;
+    LOG_WARNING("RESERVED (IP=%02x, IR=%02x) | BANK ADDR: %d", cu->cpu.regs.ip,
+                ir, cu->ram.active_bank_id);
+    return 1;
   }
 
   // Special (0-1)
   else if (IS_SPEC(ir)) {
+    LOG_DEBUG("SPECIAL");
     switch (ir) {
     case ICMD_NOP:
       return 1; // Just continue
@@ -60,21 +66,25 @@ int update_control_unit(control_unit_t *cu) {
 
   // Jump
   else if (IS_JMP(ir)) {
+    LOG_INFO("JMP %02x %02x", ir, ir - o_JMP);
     cu_jmp(cu, (cmd_jmp_t *)&(jmp_map[ir - o_JMP]));
   }
 
   // Store
   else if (IS_ST(ir)) {
+    LOG_INFO("STR");
     cu_str(cu, (cmd_str_t *)&(store_map[ir - o_STR]));
   }
 
   // Load
   else if (IS_LD(ir)) {
+    LOG_INFO("LDR");
     cu_ldr(cu, (cmd_ldr_t *)&(load_map[ir - o_LDR]));
   }
 
   // Computational (most alu)
   else {
+    LOG_INFO("ALU");
     cu_alu(cu, (cmd_alu_t *)&(alu_map[ir - o_ALU]));
   }
 
