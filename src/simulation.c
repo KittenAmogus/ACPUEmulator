@@ -1,3 +1,4 @@
+#include <control.h>
 #define LOG_MODULE "SIMULATION"
 #include <logger.h>
 
@@ -5,43 +6,60 @@
 #include <simulation.h>
 #include <unistd.h>
 
+#define MAX_TPS 100;
+
 static int init = 0;
 static SDL_Thread *thread;
 static SDL_mutex *mutex = NULL;
 static SDL_atomic_t running;   // Is running (0 - paused)
 static SDL_atomic_t need_stop; // Closing (1 - break mainloop)
+__useconds_t sleep_useconds = 1000000 / MAX_TPS;
+
+static int sim_tick(control_unit_t *cu, int *update_cu) {
+
+  if (*update_cu) {
+    if (!cu_update(cu)) {
+      LOG_INFO("ControlUnit halted");
+      *update_cu = 0;
+
+      sim_lock();
+      SDL_AtomicSet(&running, 0);
+      SDL_AtomicSet(&need_stop, 1);
+      sim_unlock();
+    }
+  }
+
+  sim_lock();
+  sim_unlock();
+
+  usleep(sleep_useconds);
+  return 1;
+}
 
 static int sim_thread_function(void *data) {
+  control_unit_t *cu = (control_unit_t *)data;
+
   LOG_DEBUG("Simulation thread started");
+
+  int update_cu = 1;
 
   while (!SDL_AtomicGet(&need_stop)) {
 
     // Paused and not need to stop
     while (!SDL_AtomicGet(&need_stop) && (SDL_AtomicGet(&running) == 0)) {
-      LOG_DEBUG("sim sleep");
-      usleep(400000);
+      usleep(8000);
     }
-    LOG_DEBUG("Unpaused");
 
     // Running and not need to stop
     while (!SDL_AtomicGet(&need_stop) && (SDL_AtomicGet(&running) != 0)) {
-      LOG_DEBUG("sim tick");
-
-      // Some updates
-      sim_lock();
-      usleep(8000);
-      sim_unlock();
-
-      // TPS Delay
-      usleep(400000);
+      sim_tick(cu, &update_cu);
     }
-    LOG_DEBUG("Paused");
   }
 
   return 0;
 }
 
-int sim_init(void) {
+int sim_init(control_unit_t *cu) {
   if (init)
     return 0;
 
@@ -53,7 +71,7 @@ int sim_init(void) {
   SDL_AtomicSet(&need_stop, 0);
   init = 1;
 
-  thread = SDL_CreateThread(sim_thread_function, "sim_thread", NULL);
+  thread = SDL_CreateThread(sim_thread_function, "sim_thread", (void *)cu);
 
   LOG_INFO("Simulation started");
   return 1;

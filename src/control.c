@@ -46,6 +46,9 @@ int cu_update(control_unit_t *cu) {
   // Increment instruction pointer
   ++cu->cpu.regs.ip;
 
+  if (ir > 0x57 && ir < 0x60)
+    ir &= ~(1 << 3);
+
   // Reserved commands
   if (IS_RSVD(ir) || ir == 0x02) {
     LOG_WARNING("RESERVED (IP=%02x, IR=%02x) | BANK ADDR: %d", cu->cpu.regs.ip,
@@ -66,25 +69,21 @@ int cu_update(control_unit_t *cu) {
 
   // Jump
   else if (IS_JMP(ir)) {
-    LOG_INFO("JMP %02x %02x", ir, ir - o_JMP);
     cu_jmp(cu, (cmd_jmp_t *)&(jmp_map[ir - o_JMP]));
   }
 
   // Store
   else if (IS_ST(ir)) {
-    LOG_INFO("STR");
     cu_str(cu, (cmd_str_t *)&(store_map[ir - o_STR]));
   }
 
   // Load
   else if (IS_LD(ir)) {
-    LOG_INFO("LDR");
     cu_ldr(cu, (cmd_ldr_t *)&(load_map[ir - o_LDR]));
   }
 
   // Computational (most alu)
   else {
-    LOG_INFO("ALU");
     cu_alu(cu, (cmd_alu_t *)&(alu_map[ir - o_ALU]));
   }
 

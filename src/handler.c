@@ -171,18 +171,19 @@ void cu_jmp(control_unit_t *cu, cmd_jmp_t *cmd) {
     dest = GET_NEAR();
   }
 
-  LOG_DEBUG("COMMAND: .noflag=%d .dest=%02x .regd=%d", cmd->noflag, cmd->dest,
-            cmd->reg_dest);
+  // LOG_DEBUG("COMMAND: .noflag=%d .dest=%02x .regd=%d", cmd->noflag,
+  // cmd->dest,
+  //           cmd->reg_dest);
 
   if (!cmd->noflag) {
     // Check if must jump
     uint8_t flag = GETFLAG(cmd->flag);
     if (!(flag ^ cmd->invert)) {
-      LOG_DEBUG("NOT %02x", dest);
+      // LOG_DEBUG("NOT %02x", dest);
       return;
     }
   }
-  LOG_DEBUG("Jumped to %02x", dest);
+  // LOG_DEBUG("Jumped to %02x", dest);
   cu->cpu.regs.ip = dest;
 }
 

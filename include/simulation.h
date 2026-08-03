@@ -1,6 +1,8 @@
 #ifndef SIMULATION_H
 #define SIMULATION_H
 
+#include <control.h>
+
 typedef enum {
   SIM_NOT_INIT = 0, // Not initialized
   SIM_PAUSED = 1,   // Initialized but not running
@@ -8,8 +10,8 @@ typedef enum {
   SIM_CLOSED = 3,   // Stopped because of halt
 } sim_state_e;
 
-int sim_init(void);  // Init simulation
-int sim_close(void); // Close simulation
+int sim_init(control_unit_t *cu); // Init simulation
+int sim_close(void);              // Close simulation
 
 int sim_toggle(void);   // Toggle pause
 int sim_pause(void);    // Pause executing
