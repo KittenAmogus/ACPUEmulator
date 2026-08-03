@@ -2,9 +2,15 @@
 #include <logger.h>
 
 #include <simulation.h>
+
+#include <stdlib.h>
 #include <unistd.h>
 
+static void cleanup(void) { sim_close(); }
+
 int main(void) {
+
+  atexit(cleanup);
 
   // Setup logger
   logger_level_set(LOG_LVL_DEBUG);
@@ -18,6 +24,5 @@ int main(void) {
     LOG_INFO("TPS: %.2f", sim_tps());
   }
 
-  sim_close();
   return 0;
 }
