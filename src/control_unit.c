@@ -25,8 +25,8 @@ int cu_step(control_unit_t *cu) {
 
   // Load instruction
   cu->CPU.ir = ram_read(&cu->RAM, cu->CPU.ip);
-  log_state(cu); // Log state
-  ++cu->CPU.ip;  // Next instruction
+  // log_state(cu); // Log state
+  ++cu->CPU.ip; // Next instruction
 
   // Execute instruction
   uint8_t ir = cu->CPU.ir;
