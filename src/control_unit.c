@@ -26,11 +26,15 @@
 static void log_state(control_unit_t *cu) {
   printf(
       // Format
-      "|| IP %02x | IR %02x || F %04b || A %02x | B %02x | C %02x | D %02x "
+      "|| IP %02x | IR %02x || %c%c%c%c || A %02x | B %02x | C %02x | D %02x "
       "||\r\n",
 
       // Special registers
-      cu->CPU.ip, cu->CPU.ir, cu->CPU.f.w & 15,
+      cu->CPU.ip, cu->CPU.ir,
+
+      // Flags
+      (cu->CPU.f.b.z ? 'Z' : '.'), (cu->CPU.f.b.s ? 'S' : '.'),
+      (cu->CPU.f.b.c ? 'C' : '.'), (cu->CPU.f.b.o ? 'O' : '.'),
 
       // GP registers
       cu->CPU.a, cu->CPU.b, cu->CPU.c, cu->CPU.d);
