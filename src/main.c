@@ -33,16 +33,24 @@ int main(int argc, char *argv[]) {
   }
 
   // Setup logger
-  logger_level_set(LOG_LVL_DEBUG);
+  logger_level_set(LOG_LVL_INFO);
   logger_ansii_set(1);
 
   sim_init(target_tps);
   sim_continue();
 
-  for (int i = 0; i < 10; ++i) {
+  do {
     usleep(500000);
-    LOG_INFO("TPS: %.2f", sim_tps());
-  }
+    sim_state_e state = sim_state();
+    // LOG_DEBUG("STATE %d", (int)state);
+    if (state == SIM_STOPPED) {
+      LOG_DEBUG("State changed to STOPPED");
+      // sim_close();
+      break;
+    }
+    // LOG_DEBUG("TPS: %.2f", sim_tps());
+  } while (1);
 
+  LOG_INFO("Exit code 0");
   return 0;
 }

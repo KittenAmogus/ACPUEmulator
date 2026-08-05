@@ -77,4 +77,9 @@ typedef struct {
   uint16_t _pad : 2;
 } __attribute__((packed)) cmd_alu_t;
 
+extern const cmd_jmp_t table_jmp[];
+extern const cmd_ldr_t table_ldr[];
+extern const cmd_str_t table_str[];
+extern const cmd_alu_t table_alu[];
+
 #endif // INTERPRETER_H

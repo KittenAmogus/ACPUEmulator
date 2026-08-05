@@ -29,6 +29,9 @@ static void print_message(loglevel_e lvl, const char *module, const char *fmt,
   const char *pref = level_strings[lvl];
   const char *color = level_colors[lvl];
 
+  if (log_loglevel < (int)lvl)
+    return;
+
   // Get file descriptor
   FILE *file = (lvl <= LOG_LVL_EXCEPT ? stderr : stdout);
 

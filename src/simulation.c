@@ -69,6 +69,38 @@ static int sim_sleep(void) {
   return 1;
 }
 
+// TODO: program
+const uint8_t program[] = {
+    0x00, // nop
+
+    0x56,
+    13, // ldi c, counter
+
+    0x48, // ld a, c
+    // 0xA8, // mov a, c
+
+    0xB0, // test a
+
+    0x08,
+    12, // jz label
+
+    // 0x54,
+    // 0x00, // ldi a, 0x00
+
+    0x70, // dec a
+
+    0x30,
+    13, // st a, counter
+
+    0x03,
+    1, // jmp 0x01
+
+    //          label:
+    0x01, // hlt
+
+    0x03, // counter: db 0x00
+};
+
 static int sim_thread_func(void *_) {
 
   // Prepare
@@ -79,8 +111,12 @@ static int sim_thread_func(void *_) {
 
   LOG_DEBUG("Initial target TPS: %" PRIu64, mgr.target_tps);
 
+  // TODO: program
+  memcpy(mgr.cu->RAM.memory.bank[0], program, sizeof(program));
+
   while (!SDL_AtomicGet(&need_stop)) {
 
+    LOG_DEBUG("State: Running");
     // Active state
     while (SDL_AtomicGet(&running) && !SDL_AtomicGet(&need_stop)) {
 
@@ -97,12 +133,14 @@ static int sim_thread_func(void *_) {
       sim_calctps();
     }
 
+    LOG_DEBUG("State: Paused");
     // Paused state
     while (!SDL_AtomicGet(&running) && !SDL_AtomicGet(&need_stop)) {
       sim_sleep();
     }
   }
 
+  SDL_AtomicSet(&running, 0);
   LOG_DEBUG("Thread exit");
   return 1;
 }
