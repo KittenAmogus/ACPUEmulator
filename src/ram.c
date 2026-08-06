@@ -9,7 +9,7 @@ static inline ram_reg_t *getdata(int id) { return &(mgr.pool[id]); }
 
 uint8_t ram_read(struct RAM *ram, uint8_t addr) {
 
-  LOG_DEBUG("LD [%d, %02x]", ram->active_bank, addr);
+  // LOG_DEBUG("LD [%d, %02x]", ram->active_bank, addr);
 
   // Read from active bank, with offset
   if (addr >= RAM_BANK_SIZE) {
@@ -44,7 +44,7 @@ void ram_write(struct RAM *ram, uint8_t addr, uint8_t value) {
     ram->memory.bank[0][addr] = value;
   }
 
-  LOG_DEBUG("ST %02x, [%02x]", value, addr);
+  // LOG_DEBUG("ST %02x, [%02x]", value, addr);
 }
 
 int ram_register(uint8_t start, uint8_t end, ram_write_t write) {

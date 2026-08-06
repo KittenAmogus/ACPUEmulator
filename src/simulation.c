@@ -8,7 +8,7 @@
 
 #include <unistd.h>
 
-sim_mgr_t mgr = {0};
+static sim_mgr_t mgr = {0};
 
 static SDL_Thread *thread = NULL;
 static SDL_mutex *mutex = NULL;

@@ -77,7 +77,7 @@ int cu_step(control_unit_t *cu) {
     return 1; // Act as NOP
   }
 
-  LOG_DEBUG("Instruction: %02x", ir);
+  // LOG_DEBUG("Instruction: %02x", ir);
 
   // Other instructions
   if (IS_JMP(ir))

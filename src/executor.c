@@ -32,8 +32,11 @@ void execute_jmp(control_unit_t *cu, cmd_jmp_t instr) {
 
   // Check flag
   int flag = GETFLAG(instr.flag) ^ instr.invert;
+
+  /*
   LOG_DEBUG("F %d = %d | I %d, RES %d", instr.flag, GETFLAG(instr.flag),
             instr.invert, flag);
+  */
 
   // Jump if flag matches or flag is not needed
   if (instr.noflag || (flag ^ instr.invert)) {
@@ -44,13 +47,16 @@ void execute_jmp(control_unit_t *cu, cmd_jmp_t instr) {
 void execute_ldr(control_unit_t *cu, cmd_ldr_t instr) {
   uint8_t src;
 
+  /*
   LOG_DEBUG("SRC: %02x", instr.src);
+  */
 
   if (instr.imm)
     src = NEAR();
   else
     src = REGISTER(instr.src);
 
+  /*
   LOG_DEBUG(""
             "LDR {\r\n"
             "  .dest=%d,\r\n"
@@ -60,6 +66,7 @@ void execute_ldr(control_unit_t *cu, cmd_ldr_t instr) {
             "};",
 
             instr.dest, instr.src, instr.imm, instr.direct);
+  */
 
   if (instr.direct)
     REGISTER(instr.dest) = src;
@@ -75,6 +82,7 @@ void execute_str(control_unit_t *cu, cmd_str_t instr) {
   else
     dest = REGISTER(instr.dest);
 
+  /*
   LOG_DEBUG(""
             "STR {\r\n"
             "  .dest=%d,\r\n"
@@ -83,6 +91,7 @@ void execute_str(control_unit_t *cu, cmd_str_t instr) {
             "};",
 
             instr.dest, instr.src, instr.imm);
+  */
 
   ram_write(&cu->RAM, dest, REGISTER(instr.src));
 }
@@ -181,8 +190,10 @@ void execute_alu(control_unit_t *cu, cmd_alu_t instr) {
     break;
   }
 
+  /*
   LOG_DEBUG("EXECUTOR (A=%02x, B=%02x) => RESULT=%02x (%04x)", a, b, result,
             result & 0xFF);
+  */
 
   // Zero
   if (instr.fmask & (1 << IFLAG_Z))
